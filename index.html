@@ -53,7 +53,7 @@
             border-color: #bbb;
         }
 
-        /* 💡 수정: 외곽의 붉은 원고지 박스 테두리를 삭제하고 투명하게 변경 */
+        /* 글자 칸들이 정렬되는 영역 */
         #word-display {
             text-align: left;
             min-height: 200px;
@@ -64,35 +64,44 @@
             padding: 20px;
             display: flex;
             flex-wrap: wrap;
-            gap: 10px; /* 글자 칸 사이의 간격 */
+            gap: 10px;
             justify-content: flex-start;
             font-weight: bold;
         }
 
-        /* 정사각형 글자 한 칸 스타일 (1자 1칸 유지) */
+        /* 정사각형 글자 한 칸 스타일 */
         #word-display .cell {
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 3px solid #ff9999; /* 예쁜 분홍색 격자 테두리 */
+            border: 3px solid #ff9999;
             background-color: white;
             border-radius: 10px;
-            aspect-ratio: 1 / 1; /* 완벽한 정사각형 유지 */
+            aspect-ratio: 1 / 1;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             box-sizing: border-box;
         }
 
         /* 띄어쓰기 칸 스타일 */
         #word-display .cell.space {
-            background-color: #e2e8f0; /* 띄어쓰기는 확실히 구분되도록 연한 회색 배경 */
-            border: 3px dashed #cbd5e1; /* 점선 테두리 */
+            background-color: #e2e8f0;
+            border: 3px dashed #cbd5e1;
         }
 
         /* 문장 부호 칸 스타일 */
         #word-display .cell.punctuation {
-            border: 3px solid #a8d5e2; /* 문장 부호는 연하늘색 테두리로 강조 */
+            border: 3px solid #a8d5e2;
             background-color: #f0fdf4;
             color: #059669;
+        }
+
+        /* 💡 수정 1: 온점(.) 격자 칸 내부에서 왼쪽 하단으로 배치 */
+        #word-display .cell.dot-cell {
+            align-items: flex-end;    /* 아래쪽 정렬 */
+            justify-content: flex-start; /* 왼쪽 정렬 */
+            /* 온점이 칸 구석에 너무 붙지 않도록 약간의 여백(패딩) 주기 */
+            padding-left: 15%;
+            padding-bottom: 15%;
         }
 
         /* 하단 고정 마이크 영역 */
@@ -110,7 +119,7 @@
             z-index: 100;
         }
 
-        /* image_1.png 마이크 이미지 버튼 */
+        /* 마이크 이미지 버튼 */
         #image-mic-btn {
             border: none;
             background-color: transparent;
@@ -186,8 +195,9 @@
         const wordDisplay = document.getElementById('word-display');
         const btnUp = document.getElementById('font-up');
         const btnDown = document.getElementById('font-down');
+        let rawRecognizedText = ""; // 💡 억양 판별을 위해 브라우저 원본 텍스트를 저장할 변수
 
-        // 💡 수정: 글자 수에 맞춰 정사각형 칸을 예쁘게 그려주는 공통 함수
+        // 정사각형 칸을 예쁘게 그려주는 함수
         function renderCells(text) {
             wordDisplay.innerHTML = '';
             
@@ -198,7 +208,7 @@
                 return;
             }
 
-            const cellSize = currentFontSize + 24; // 글자 크기에 맞춘 칸 크기 설정
+            const cellSize = currentFontSize + 24;
             
             for (let i = 0; i < text.length; i++) {
                 const char = text[i];
@@ -206,9 +216,13 @@
                 cell.classList.add('cell');
                 
                 if (char === ' ') {
-                    cell.classList.add('space'); // 띄어쓰기 칸
+                    cell.classList.add('space');
                 } else if (['.', '?', '!'].includes(char)) {
-                    cell.classList.add('punctuation'); // 문장 부호 칸
+                    cell.classList.add('punctuation');
+                    // 💡 수정 1: 온점(.)인 경우 특수 클래스를 붙여 왼쪽 아래로 정렬시킴
+                    if (char === '.') {
+                        cell.classList.add('dot-cell');
+                    }
                 }
                 
                 cell.textContent = char;
@@ -219,31 +233,45 @@
             }
         }
 
-        // 💡 수정: 문맥을 파악해 온점, 물음표, 느낌표를 붙여주는 판별 함수
-        function applyPunctuation(text) {
+        // 💡 수정 2: 인토네이션(억양)과 어미에 따른 문장 부호 판별 로직 고도화
+        function applyPunctuation(text, originalText) {
             text = text.trim();
             if (!text || text === "...") return text;
             
-            const lastChar = text.slice(-1);
-            // 이미 부호가 붙어있다면 중복해서 붙이지 않음
-            if (['.', '?', '!'].includes(lastChar)) return text;
+            // 이미 부호가 끝에 붙어 있다면 브라우저가 판별한 결과를 우선 신뢰함
+            let lastChar = text.slice(-1);
+            if (['.', '?', '!'].includes(lastChar)) {
+                // 단, 브라우저가 아무것도 안 붙여줬을 때만 아래 커스텀 룰을 통과함
+                return text; 
+            }
 
-            // 1. 물음표(?) 규칙: 의문사가 들어있거나 의문형 어미로 끝날 때
-            const isQuestion = text.match(/(누가|언제|어디|무엇|뭐|어떻게|왜|몇|있니|했니|했나요|인가요|맞나요|틀렸나요|가요|요)/) || ['까', '니', '냐'].includes(lastChar);
+            // 브라우저의 원본 텍스트 데이터에서 종결 기호가 있었는지 확인 (억양 추적)
+            const origLast = originalText.trim().slice(-1);
+
+            // 1. 요로 끝날 때 인토네이션 추적
+            if (lastChar === '요') {
+                if (origLast === '?') {
+                    return text + '?'; // 끝을 올렸을 때
+                } else {
+                    return text + '.'; // 평서문으로 내렸을 때
+                }
+            }
+
+            // 2. 일반적인 물음표(?) 규칙 (의문형 단어 및 어미)
+            const isQuestion = text.match(/(누가|언제|어디|무엇|뭐|어떻게|왜|몇|있니|했니|했나요|인가요|맞나요|가요)/) || ['까', '니', '냐'].includes(lastChar) || origLast === '?';
             
-            // 2. 느낌표(!) 규칙: 감탄사가 들어있을 때
-            const isExclamation = text.match(/(우와|와|앗|아싸|야호|헉|짜잔|최고|정말|진짜)/);
+            // 3. 느낌표(!) 규칙 (감탄사 및 강한 어조)
+            const isExclamation = text.match(/(우와|와|앗|아싸|야호|헉|짜잔|최고|정말|진짜)/) || origLast === '!';
 
             if (isQuestion) return text + '?';
             if (isExclamation) return text + '!';
-            return text + '.'; // 3. 기본 마침표(.)
+            return text + '.'; // 기본 온점
         }
 
         // 크기 조절 버튼 이벤트
         btnUp.addEventListener('click', () => {
             if (currentFontSize < 150) {
                 currentFontSize += 10;
-                // 현재 화면에 글자가 있으면 크기를 즉시 다시 계산해서 그려줌
                 const currentText = Array.from(wordDisplay.querySelectorAll('.cell')).map(c => c.textContent).join('');
                 if(currentText) renderCells(currentText);
             }
@@ -257,7 +285,10 @@
             }
         });
 
-        // ---------------- 음성 인식(STT) 코어 로직 ----------------
+        // 초기화
+        renderCells("");
+
+        // ---------------- 음성 인식(STT) 로직 ----------------
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
         if (!SpeechRecognition) {
@@ -284,6 +315,7 @@
             function resetApp() {
                 isListening = false;
                 isComplete = false;
+                rawRecognizedText = "";
                 renderCells("...");
                 statusDisplay.textContent = "귀를 쫑긋 세우고 있어요!";
             }
@@ -298,25 +330,20 @@
             recognition.onresult = function(event) {
                 let interimTranscript = '';
                 let finalTranscript = '';
-                let isFinalResult = false;
 
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     if (event.results[i].isFinal) {
                         finalTranscript += event.results[i][0].transcript;
-                        isFinalResult = true;
                     } else {
                         interimTranscript += event.results[i][0].transcript;
                     }
                 }
                 
-                let text = finalTranscript || interimTranscript;
+                // 브라우저가 원본으로 인식한 텍스트 기호까지 임시 저장 (인토네이션 힌트 획득용)
+                rawRecognizedText = finalTranscript || interimTranscript;
                 
-                // 💡 실시간 말하는 중에는 부호를 붙이지 않고 글자만 보여줌
-                if (isFinalResult) {
-                    text = applyPunctuation(text);
-                }
-                
-                renderCells(text);
+                // 실시간 입력 중에는 가공되지 않은 텍스트를 보여줌
+                renderCells(rawRecognizedText);
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
             };
 
@@ -324,21 +351,25 @@
                 statusDisplay.textContent = "앗, 잘 못 들었어요. 다시 해볼까요?";
             };
 
-            // 💡 [핵심 수정] 마이크가 완전히 종료되는 시점에 문장 부호 이중 점검 및 강제 주입
+            // 마이크 종료 시점에 부호 최종 가공 및 삽입
             recognition.onend = function() {
                 isListening = false;
                 micBtn.classList.remove('listening');
 
-                // 현재 화면에 생성된 글자 칸들의 텍스트를 전부 수집
                 const cells = wordDisplay.querySelectorAll('.cell');
                 let currentText = Array.from(cells).map(cell => cell.textContent).join('').trim();
+
+                // 기존에 잘못 붙었을 수 있는 문장부호 임시 제거 후 재계산
+                if (['.', '?', '!'].includes(currentText.slice(-1))) {
+                    currentText = currentText.slice(0, -1);
+                }
 
                 if (currentText && currentText !== "...") {
                     isComplete = true;
                     statusDisplay.textContent = "완료!"; 
                     
-                    // 수집한 최종 텍스트에 문장 부호가 누락되었다면 확실하게 입혀서 최종 화면을 다시 그려줌
-                    let finalText = applyPunctuation(currentText);
+                    // 💡 수정 2: 수집된 텍스트와 원본 인식 텍스트(인토네이션 포함)를 비교하여 최종 부호 결정
+                    let finalText = applyPunctuation(currentText, rawRecognizedText);
                     renderCells(finalText);
                 } else {
                     statusDisplay.textContent = "다시 말하기 버튼을 눌러주세요.";
