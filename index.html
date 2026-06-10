@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>초1 맞춤형 말하는 한글 돋보기</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            height: 100vh;
+            margin: 0;
+            background-color: #f7f9fc;
+            font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+            padding-top: 30px;
+        }
+
+        #top-visuals {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 25px;
+            margin-bottom: 40px;
+            font-size: 50px;
+            font-weight: bold;
+            color: #ccc;
+        }
+
+        #top-visuals .item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #top-visuals .active {
+            color: #ff9999;
+        }
+
+        #top-visuals .arrow {
+            font-size: 30px;
+            color: #ddd;
+        }
+
+        #top-visuals #visual-hangul {
+            color: #a8d5e2;
+            font-weight: 900;
+        }
+
+        #word-display {
+            font-size: 100px; 
+            font-weight: bold;
+            color: #333;
+            min-height: 150px;
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 20px 40px;
+            border-radius: 20px;
+            background-color: white;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+            width: 80%;
+            max-width: 900px;
+            word-break: keep-all;
+        }
+
+        #mic-btn {
+            font-size: 60px;
+            width: 130px;
+            height: 130px;
+            background-color: #ff9999;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 8px 18px rgba(255, 153, 153, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        #mic-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 22px rgba(255, 153, 153, 0.4);
+        }
+
+        #mic-btn.listening {
+            background-color: #ffcc00;
+            box-shadow: 0 8px 18px rgba(255, 204, 0, 0.3);
+            animation: blink 1.2s infinite;
+        }
+
+        #mic-btn.complete {
+            background-color: #4cd137;
+            box-shadow: 0 8px 18px rgba(76, 209, 55, 0.3);
+            cursor: default;
+        }
+
+        #retry-btn {
+            display: none;
+            font-size: 30px;
+            background-color: #ddd;
+            color: #666;
+            border: none;
+            border-radius: 50%;
+            width: 70px;
+            height: 70px;
+            cursor: pointer;
+            position: absolute;
+            bottom: -80px;
+            transition: all 0.2s ease;
+        }
+
+        #retry-btn:hover {
+            background-color: #ccc;
+            transform: scale(1.1);
+        }
+
+        #mic-btn.retry-ready #retry-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #status {
+            margin-top: 20px;
+            font-size: 20px;
+            color: #888;
+            height: 30px;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; transform: scale(1.05); }
+            50% { opacity: 0.6; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="top-visuals">
+        <div id="visual-speak" class="item active">👄🎤</div>
+        <div class="arrow item">➡️</div>
+        <div id="visual-hangul" class="item">ㄱㄴㄷ</div>
+    </div>
+
+    <div id="word-display"></div>
+    
+    <div style="position: relative;"> 
+        <button id="mic-btn">🎤
+            <span id="retry-btn">🔄</span> 
+        </button>
+    </div>
+    
+    <div id="status">준비 완료!</div>
+
+    <script>
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (!SpeechRecognition) {
+            document.getElementById('word-display').innerHTML = "크롬 브라우저를<br>사용해주세요!";
+            document.getElementById('mic-btn').style.display = 'none';
+        } else {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'ko-KR'; 
+            recognition.interimResults = true; 
+            recognition.maxAlternatives = 1;
+
+            const micBtn = document.getElementById('mic-btn');
+            const retryBtn = document.getElementById('retry-btn');
+            const wordDisplay = document.getElementById('word-display');
+            const statusDisplay = document.getElementById('status');
+            const visualSpeak = document.getElementById('visual-speak');
+            const visualHangul = document.getElementById('visual-hangul');
+
+            let isListening = false;
+            let isComplete = false;
+
+            micBtn.addEventListener('click', () => {
+                if (isListening) {
+                    recognition.stop();
+                    return;
+                }
+                if (isComplete) {
+                    resetApp();
+                    recognition.start();
+                    return;
+                }
+                recognition.start();
+            });
+
+            retryBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                resetApp();
+                recognition.start();
+            });
+
+            function resetApp() {
+                isListening = false;
+                isComplete = false;
+                micBtn.classList.remove('complete', 'retry-ready');
+                wordDisplay.textContent = "..."; // 다시 시작할 때는 점 3개로 말할 준비가 되었음을 알림
+                statusDisplay.textContent = "귀를 쫑긋 세우고 있어요!";
+                visualSpeak.classList.add('active');
+                visualHangul.classList.remove('active');
+            }
+
+            recognition.onstart = function() {
+                isListening = true;
+                micBtn.classList.add('listening');
+                statusDisplay.textContent = "듣고 있어요!";
+                wordDisplay.textContent = "...";
+                visualSpeak.classList.add('active');
+                visualHangul.classList.remove('active');
+            }
+
+            recognition.onresult = function(event) {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                wordDisplay.innerHTML = finalTranscript || interimTranscript;
+            };
+
+            recognition.onerror = function(event) {
+                statusDisplay.textContent = "앗, 잘 못 들었어요. 다시 해볼까요?";
+                console.error("Speech recognition error", event.error);
+            };
+
+            recognition.onend = function() {
+                isListening = false;
+                micBtn.classList.remove('listening');
+
+                if (!wordDisplay.textContent.includes("...") && wordDisplay.textContent.trim() !== "") {
+                    isComplete = true;
+                    micBtn.classList.add('complete');
+                    statusDisplay.textContent = "멋진 낱말을 적었어요! 완료!";
+                    visualSpeak.classList.remove('active');
+                    visualHangul.classList.add('active');
+
+                    setTimeout(() => {
+                        if(isComplete) {
+                            micBtn.classList.add('retry-ready');
+                            statusDisplay.textContent = "버튼을 누르면 다시 할 수 있어요!";
+                        }
+                    }, 2500);
+                } else {
+                    micBtn.classList.remove('complete');
+                    statusDisplay.textContent = "다시 말하기 버튼을 눌러주세요.";
+                    visualSpeak.classList.remove('active');
+                    visualHangul.classList.remove('active');
+                }
+            };
+        }
+    </script>
+</body>
+</html>
