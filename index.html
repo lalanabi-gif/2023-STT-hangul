@@ -103,14 +103,14 @@
             z-index: 100;
         }
 
-        /* 첨부된 이미지를 사용하는 새로운 마이크 이미지 버튼 스타일 */
+        /* 💡 수정된 부분: 첨부된 이미지(image_1.png)를 사용하는 새로운 마이크 이미지 버튼 스타일 */
         #image-mic-btn {
             border: none;
             background-color: transparent;
             cursor: pointer;
             transition: transform 0.2s;
             width: auto;
-            max-width: 150px;
+            max-width: 150px; /* 기본 최대 크기 */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -126,7 +126,7 @@
             transform: scale(1.05);
         }
 
-        /* 듣는 중 애니메이션 */
+        /* 듣는 중 애니메이션 (이미지 버튼에 적용) */
         #image-mic-btn.listening {
             animation: blink-mic 1.2s infinite;
         }
@@ -137,6 +137,12 @@
             font-weight: bold;
             color: #666;
             height: 30px;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; transform: scale(1.05); }
+            50% { opacity: 0.6; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.05); }
         }
 
         @keyframes blink-mic {
@@ -151,7 +157,7 @@
             #font-controls { width: 90%; gap: 20px; }
             .font-btn { font-size: 22px; padding: 12px 25px; }
             #word-display { width: 90%; padding: 50px; min-height: 400px; }
-            #image-mic-btn { max-width: 180px; }
+            #image-mic-btn { max-width: 180px; } /* 태블릿 등 넓은 화면에서 크기 조절 */
             #status { font-size: 24px; margin-top: 25px; }
         }
     </style>
@@ -163,7 +169,8 @@
         <button class="font-btn" id="font-up">🔍 ➕ 크게</button>
     </div>
 
-    <div id="word-display"></div>
+    <div id="word-display">
+    </div>
     
     <div id="bottom-area">
         <div style="position: relative;"> 
@@ -175,7 +182,7 @@
     </div>
 
     <script>
-        // 글자 크기와 원고지 격자무늬 동기화
+        // 글자 크기와 원고지 격자무늬를 동기화하는 자바스크립트
         let currentFontSize = 80;
         const wordDisplay = document.getElementById('word-display');
         const btnUp = document.getElementById('font-up');
@@ -219,7 +226,7 @@
             recognition.interimResults = true; 
             recognition.maxAlternatives = 1;
 
-            const micBtn = document.getElementById('image-mic-btn');
+            const micBtn = document.getElementById('image-mic-btn'); // 새로운 이미지 버튼 연결
             const statusDisplay = document.getElementById('status');
 
             let isListening = false;
@@ -240,7 +247,7 @@
 
             recognition.onstart = function() {
                 isListening = true;
-                micBtn.classList.add('listening');
+                micBtn.classList.add('listening'); // 이미지 버튼에 애니메이션 적용
                 statusDisplay.textContent = "듣고 있어요!";
                 wordDisplay.textContent = "...";
             }
@@ -248,26 +255,56 @@
             recognition.onresult = function(event) {
                 let interimTranscript = '';
                 let finalTranscript = '';
-                let isFinalResult = false; // 💡 문장이 끝났는지 판단하는 변수
 
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     const transcript = event.results[i][0].transcript;
                     if (event.results[i].isFinal) {
                         finalTranscript += transcript;
-                        isFinalResult = true;
                     } else {
                         interimTranscript += transcript;
                     }
                 }
                 
-                let text = finalTranscript || interimTranscript;
+                // 진짜 원고지 칸 생성 로직 유지
+                wordDisplay.innerHTML = '';
+                const text = finalTranscript || interimTranscript;
+                const cellSize = currentFontSize + 16;
+                
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+                    const cell = document.createElement('span');
+                    cell.classList.add('cell');
+                    if (char === ' ') {
+                        cell.classList.add('space');
+                    }
+                    cell.textContent = char;
+                    cell.style.width = `${cellSize}px`;
+                    cell.style.height = `${cellSize}px`;
+                    cell.style.fontSize = `${currentFontSize}px`;
+                    wordDisplay.appendChild(cell);
+                }
+                
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            };
 
-                // 💡 문장 부호 자동 삽입 로직 (말이 완전히 끝났을 때만 작동)
-                if (isFinalResult && text.trim() !== "") {
-                    text = text.trim(); // 앞뒤 공백 제거
-                    const lastChar = text.slice(-1); // 마지막 글자 가져오기
-                    
-                    // 브라우저가 이미 기호를 넣지 않은 경우에만 판단해서 넣기
-                    if (!['.', '?', '!'].includes(lastChar)) {
-                        // 1. 물음표: 의문사가 있거나 질문하는 글자로 끝날 때
-                        if (text.match(/(누가|언제|어디|무엇|뭐|어떻게|왜|어느|몇)/) || ['까', '니', '냐', '대', '래', '야'].includes(lastChar))
+            recognition.onerror = function(event) {
+                statusDisplay.textContent = "앗, 잘 못 들었어요. 다시 해볼까요?";
+            };
+
+            recognition.onend = function() {
+                isListening = false;
+                micBtn.classList.remove('listening');
+
+                const cells = wordDisplay.querySelectorAll('.cell');
+                if (cells.length > 0 && Array.from(cells).some(cell => cell.textContent.trim() !== "")) {
+                    isComplete = true;
+                    // 💡 추가 수정 사항: 완료 문구를 "완료!"로 수정
+                    statusDisplay.textContent = "완료!"; 
+                } else {
+                    statusDisplay.textContent = "다시 말하기 버튼을 눌러주세요.";
+                }
+            };
+        }
+    </script>
+</body>
+</html>
