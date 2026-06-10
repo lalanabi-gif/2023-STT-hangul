@@ -53,42 +53,49 @@
             border-color: #bbb;
         }
 
-        /* 원고지 스타일의 텍스트 박스 */
+        /* 💡 수정: 외곽의 붉은 원고지 박스 테두리를 삭제하고 투명하게 변경 */
         #word-display {
             text-align: left;
-            min-height: 300px;
+            min-height: 200px;
             height: auto;
             width: 85%;
             max-width: 900px;
             word-break: keep-all;
-            padding: 40px;
-            border-radius: 10px;
-            background-color: white;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-            border: 4px solid #e53935;
-            color: #333;
-            font-weight: bold;
+            padding: 20px;
             display: flex;
             flex-wrap: wrap;
-            gap: 0px;
+            gap: 10px; /* 글자 칸 사이의 간격 */
+            justify-content: flex-start;
+            font-weight: bold;
         }
 
-        /* 원고지 셀 스타일 */
+        /* 정사각형 글자 한 칸 스타일 (1자 1칸 유지) */
         #word-display .cell {
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 2px solid #ffcdd2;
-            aspect-ratio: 1 / 1;
+            border: 3px solid #ff9999; /* 예쁜 분홍색 격자 테두리 */
+            background-color: white;
+            border-radius: 10px;
+            aspect-ratio: 1 / 1; /* 완벽한 정사각형 유지 */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             box-sizing: border-box;
         }
 
-        /* 띄어쓰기 셀 스타일 */
+        /* 띄어쓰기 칸 스타일 */
         #word-display .cell.space {
-            background-color: #f0f0f0;
+            background-color: #e2e8f0; /* 띄어쓰기는 확실히 구분되도록 연한 회색 배경 */
+            border: 3px dashed #cbd5e1; /* 점선 테두리 */
         }
 
-        /* 마이크 버튼 영역 */
+        /* 문장 부호 칸 스타일 */
+        #word-display .cell.punctuation {
+            border: 3px solid #a8d5e2; /* 문장 부호는 연하늘색 테두리로 강조 */
+            background-color: #f0fdf4;
+            color: #059669;
+        }
+
+        /* 하단 고정 마이크 영역 */
         #bottom-area {
             position: fixed;
             bottom: 0;
@@ -103,14 +110,14 @@
             z-index: 100;
         }
 
-        /* 💡 수정된 부분: 첨부된 이미지(image_1.png)를 사용하는 새로운 마이크 이미지 버튼 스타일 */
+        /* image_1.png 마이크 이미지 버튼 */
         #image-mic-btn {
             border: none;
             background-color: transparent;
             cursor: pointer;
             transition: transform 0.2s;
             width: auto;
-            max-width: 150px; /* 기본 최대 크기 */
+            max-width: 150px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -126,7 +133,7 @@
             transform: scale(1.05);
         }
 
-        /* 듣는 중 애니메이션 (이미지 버튼에 적용) */
+        /* 듣는 중 애니메이션 */
         #image-mic-btn.listening {
             animation: blink-mic 1.2s infinite;
         }
@@ -137,12 +144,6 @@
             font-weight: bold;
             color: #666;
             height: 30px;
-        }
-
-        @keyframes blink {
-            0% { opacity: 1; transform: scale(1.05); }
-            50% { opacity: 0.6; transform: scale(1); }
-            100% { opacity: 1; transform: scale(1.05); }
         }
 
         @keyframes blink-mic {
@@ -156,8 +157,8 @@
             body { padding-top: 50px; padding-bottom: 280px; }
             #font-controls { width: 90%; gap: 20px; }
             .font-btn { font-size: 22px; padding: 12px 25px; }
-            #word-display { width: 90%; padding: 50px; min-height: 400px; }
-            #image-mic-btn { max-width: 180px; } /* 태블릿 등 넓은 화면에서 크기 조절 */
+            #word-display { width: 90%; min-height: 300px; gap: 15px; }
+            #image-mic-btn { max-width: 180px; }
             #status { font-size: 24px; margin-top: 25px; }
         }
     </style>
@@ -169,8 +170,7 @@
         <button class="font-btn" id="font-up">🔍 ➕ 크게</button>
     </div>
 
-    <div id="word-display">
-    </div>
+    <div id="word-display"></div>
     
     <div id="bottom-area">
         <div style="position: relative;"> 
@@ -182,43 +182,86 @@
     </div>
 
     <script>
-        // 글자 크기와 원고지 격자무늬를 동기화하는 자바스크립트
         let currentFontSize = 80;
         const wordDisplay = document.getElementById('word-display');
         const btnUp = document.getElementById('font-up');
         const btnDown = document.getElementById('font-down');
 
-        function updateGridAndFont() {
-            const cellSize = currentFontSize + 16; 
-            const cells = wordDisplay.querySelectorAll('.cell');
-            cells.forEach(cell => {
+        // 💡 수정: 글자 수에 맞춰 정사각형 칸을 예쁘게 그려주는 공통 함수
+        function renderCells(text) {
+            wordDisplay.innerHTML = '';
+            
+            if (text === "...") {
+                wordDisplay.textContent = "...";
+                wordDisplay.style.fontSize = currentFontSize + 'px';
+                wordDisplay.style.color = "#aaa";
+                return;
+            }
+
+            const cellSize = currentFontSize + 24; // 글자 크기에 맞춘 칸 크기 설정
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const cell = document.createElement('span');
+                cell.classList.add('cell');
+                
+                if (char === ' ') {
+                    cell.classList.add('space'); // 띄어쓰기 칸
+                } else if (['.', '?', '!'].includes(char)) {
+                    cell.classList.add('punctuation'); // 문장 부호 칸
+                }
+                
+                cell.textContent = char;
                 cell.style.width = `${cellSize}px`;
                 cell.style.height = `${cellSize}px`;
                 cell.style.fontSize = `${currentFontSize}px`;
-            });
+                wordDisplay.appendChild(cell);
+            }
         }
 
+        // 💡 수정: 문맥을 파악해 온점, 물음표, 느낌표를 붙여주는 판별 함수
+        function applyPunctuation(text) {
+            text = text.trim();
+            if (!text || text === "...") return text;
+            
+            const lastChar = text.slice(-1);
+            // 이미 부호가 붙어있다면 중복해서 붙이지 않음
+            if (['.', '?', '!'].includes(lastChar)) return text;
+
+            // 1. 물음표(?) 규칙: 의문사가 들어있거나 의문형 어미로 끝날 때
+            const isQuestion = text.match(/(누가|언제|어디|무엇|뭐|어떻게|왜|몇|있니|했니|했나요|인가요|맞나요|틀렸나요|가요|요)/) || ['까', '니', '냐'].includes(lastChar);
+            
+            // 2. 느낌표(!) 규칙: 감탄사가 들어있을 때
+            const isExclamation = text.match(/(우와|와|앗|아싸|야호|헉|짜잔|최고|정말|진짜)/);
+
+            if (isQuestion) return text + '?';
+            if (isExclamation) return text + '!';
+            return text + '.'; // 3. 기본 마침표(.)
+        }
+
+        // 크기 조절 버튼 이벤트
         btnUp.addEventListener('click', () => {
             if (currentFontSize < 150) {
                 currentFontSize += 10;
-                updateGridAndFont();
+                // 현재 화면에 글자가 있으면 크기를 즉시 다시 계산해서 그려줌
+                const currentText = Array.from(wordDisplay.querySelectorAll('.cell')).map(c => c.textContent).join('');
+                if(currentText) renderCells(currentText);
             }
         });
 
         btnDown.addEventListener('click', () => {
             if (currentFontSize > 30) {
                 currentFontSize -= 10;
-                updateGridAndFont();
+                const currentText = Array.from(wordDisplay.querySelectorAll('.cell')).map(c => c.textContent).join('');
+                if(currentText) renderCells(currentText);
             }
         });
 
-        updateGridAndFont();
-
-        // ---------------- 음성 인식(STT) 코드 ----------------
+        // ---------------- 음성 인식(STT) 코어 로직 ----------------
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
         if (!SpeechRecognition) {
-            wordDisplay.innerHTML = "크롬 브라우저를<br>사용해주세요!";
+            wordDisplay.innerHTML = "크롬 브라우저를 사용해주세요!";
             document.getElementById('image-mic-btn').style.display = 'none';
         } else {
             const recognition = new SpeechRecognition();
@@ -226,7 +269,7 @@
             recognition.interimResults = true; 
             recognition.maxAlternatives = 1;
 
-            const micBtn = document.getElementById('image-mic-btn'); // 새로운 이미지 버튼 연결
+            const micBtn = document.getElementById('image-mic-btn');
             const statusDisplay = document.getElementById('status');
 
             let isListening = false;
@@ -241,49 +284,39 @@
             function resetApp() {
                 isListening = false;
                 isComplete = false;
-                wordDisplay.textContent = "...";
+                renderCells("...");
                 statusDisplay.textContent = "귀를 쫑긋 세우고 있어요!";
             }
 
             recognition.onstart = function() {
                 isListening = true;
-                micBtn.classList.add('listening'); // 이미지 버튼에 애니메이션 적용
+                micBtn.classList.add('listening');
                 statusDisplay.textContent = "듣고 있어요!";
-                wordDisplay.textContent = "...";
+                renderCells("...");
             }
 
             recognition.onresult = function(event) {
                 let interimTranscript = '';
                 let finalTranscript = '';
+                let isFinalResult = false;
 
                 for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const transcript = event.results[i][0].transcript;
                     if (event.results[i].isFinal) {
-                        finalTranscript += transcript;
+                        finalTranscript += event.results[i][0].transcript;
+                        isFinalResult = true;
                     } else {
-                        interimTranscript += transcript;
+                        interimTranscript += event.results[i][0].transcript;
                     }
                 }
                 
-                // 진짜 원고지 칸 생성 로직 유지
-                wordDisplay.innerHTML = '';
-                const text = finalTranscript || interimTranscript;
-                const cellSize = currentFontSize + 16;
+                let text = finalTranscript || interimTranscript;
                 
-                for (let i = 0; i < text.length; i++) {
-                    const char = text[i];
-                    const cell = document.createElement('span');
-                    cell.classList.add('cell');
-                    if (char === ' ') {
-                        cell.classList.add('space');
-                    }
-                    cell.textContent = char;
-                    cell.style.width = `${cellSize}px`;
-                    cell.style.height = `${cellSize}px`;
-                    cell.style.fontSize = `${currentFontSize}px`;
-                    wordDisplay.appendChild(cell);
+                // 💡 실시간 말하는 중에는 부호를 붙이지 않고 글자만 보여줌
+                if (isFinalResult) {
+                    text = applyPunctuation(text);
                 }
                 
+                renderCells(text);
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
             };
 
@@ -291,15 +324,22 @@
                 statusDisplay.textContent = "앗, 잘 못 들었어요. 다시 해볼까요?";
             };
 
+            // 💡 [핵심 수정] 마이크가 완전히 종료되는 시점에 문장 부호 이중 점검 및 강제 주입
             recognition.onend = function() {
                 isListening = false;
                 micBtn.classList.remove('listening');
 
+                // 현재 화면에 생성된 글자 칸들의 텍스트를 전부 수집
                 const cells = wordDisplay.querySelectorAll('.cell');
-                if (cells.length > 0 && Array.from(cells).some(cell => cell.textContent.trim() !== "")) {
+                let currentText = Array.from(cells).map(cell => cell.textContent).join('').trim();
+
+                if (currentText && currentText !== "...") {
                     isComplete = true;
-                    // 💡 추가 수정 사항: 완료 문구를 "완료!"로 수정
                     statusDisplay.textContent = "완료!"; 
+                    
+                    // 수집한 최종 텍스트에 문장 부호가 누락되었다면 확실하게 입혀서 최종 화면을 다시 그려줌
+                    let finalText = applyPunctuation(currentText);
+                    renderCells(finalText);
                 } else {
                     statusDisplay.textContent = "다시 말하기 버튼을 눌러주세요.";
                 }
