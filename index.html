@@ -11,36 +11,28 @@
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            min-height: 100vh; /* 💡 수정 2: 내용이 길어지면 화면이 아래로 늘어나도록 변경 */
+            min-height: 100vh;
             margin: 0;
             background-color: #f7f9fc;
             font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
             padding-top: 30px;
-            padding-bottom: 250px; /* 맨 아래 고정된 마이크 버튼에 가려지지 않도록 여유 공간 확보 */
+            padding-bottom: 250px;
             box-sizing: border-box;
+            overflow-x: hidden; /* 가로 스크롤 방지 */
         }
 
-        #top-visuals {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 25px;
-            margin-bottom: 20px;
-            font-size: 50px;
-            font-weight: bold;
-            color: #ccc;
-        }
+        /* 💡 수정 3-1: 상단 시각 요소 삭제 */
+        /* #top-visuals 관련 CSS 삭제 */
 
-        #top-visuals .item { display: flex; align-items: center; justify-content: center; }
-        #top-visuals .active { color: #ff9999; }
-        #top-visuals .arrow { font-size: 30px; color: #ddd; }
-        #top-visuals #visual-hangul { color: #a8d5e2; font-weight: 900; }
-
-        /* 💡 수정 3: 글자 크기 조절 버튼 영역 */
+        /* 글자 크기 조절 버튼 영역 */
         #font-controls {
             display: flex;
             gap: 15px;
             margin-bottom: 30px;
+            /* 💡 수정: 반응형 디자인 적용 */
+            width: 85%;
+            max-width: 900px;
+            justify-content: center;
         }
 
         .font-btn {
@@ -67,9 +59,9 @@
 
         /* 💡 수정 1 & 2: 원고지 스타일의 텍스트 박스 */
         #word-display {
-            text-align: left; /* 가운데 정렬을 왼쪽 정렬로 변경 */
-            min-height: 300px; /* 기본 높이 */
-            height: auto; /* 글이 길어지면 자동으로 늘어남 */
+            text-align: left;
+            min-height: 300px;
+            height: auto;
             width: 85%;
             max-width: 900px;
             word-break: keep-all;
@@ -79,66 +71,78 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.05);
             
             /* 원고지 특유의 테두리 디자인 */
-            border: 4px solid #e53935; /* 붉은색 테두리 */
+            border: 4px solid #e53935;
             color: #333;
             font-weight: bold;
+
+            /* 💡 수정: 진짜 원고지 격자 구현을 위한 CSS */
+            display: flex;
+            flex-wrap: wrap; /* 글자가 차면 다음 줄로 */
+            gap: 0px; /* 셀 사이 간격 제거 */
         }
 
-        /* 💡 수정 2: 마이크 버튼이 다른 글자와 겹치지 않도록 화면 맨 아래에 항상 띄워둠 */
+        /* 원고지 셀 스타일 */
+        #word-display .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ffcdd2; /* 격자 테두리색 */
+            /* 💡 수정: JS에서 글자 크기에 맞춰 조절됨 */
+            aspect-ratio: 1 / 1; /* 정사각형 유지 */
+            box-sizing: border-box; /* 테두리 포함 크기 계산 */
+        }
+
+        /* 띄어쓰기 셀 스타일 */
+        #word-display .cell.space {
+            background-color: #f0f0f0; /* 띄어쓰기는 회색 배경 */
+        }
+
+        /* 마이크 버튼 영역 */
         #bottom-area {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            background: linear-gradient(to top, #f7f9fc 70%, transparent); /* 텍스트 위로 자연스럽게 올라오는 효과 */
+            background: linear-gradient(to top, #f7f9fc 70%, transparent);
             display: flex;
             flex-direction: column;
             align-items: center;
             padding-bottom: 40px;
             padding-top: 50px;
-            z-index: 100; /* 항상 가장 위에 보이도록 설정 */
+            z-index: 100;
         }
 
-        #mic-btn {
-            font-size: 60px;
-            width: 130px;
-            height: 130px;
-            background-color: #ff9999;
-            color: white;
+        /* 💡 수정 3-3: 새로운 마이크 이미지 버튼 */
+        #image-mic-btn {
             border: none;
-            border-radius: 50%;
+            background-color: transparent;
             cursor: pointer;
-            box-shadow: 0 8px 18px rgba(255, 153, 153, 0.3);
+            transition: transform 0.2s;
+            /* 💡 수정: 반응형 디자인 적용 */
+            width: auto;
+            max-width: 150px; /* 최대 크기 제한 */
             display: flex;
-            align-items: center;
             justify-content: center;
-            padding: 0;
-            transition: all 0.3s ease;
-            position: relative;
+            align-items: center;
         }
 
-        #mic-btn:hover { transform: scale(1.05); box-shadow: 0 10px 22px rgba(255, 153, 153, 0.4); }
-        #mic-btn.listening { background-color: #ffcc00; box-shadow: 0 8px 18px rgba(255, 204, 0, 0.3); animation: blink 1.2s infinite; }
-        #mic-btn.complete { background-color: #4cd137; box-shadow: 0 8px 18px rgba(76, 209, 55, 0.3); cursor: default; }
-
-        #retry-btn {
-            display: none;
-            font-size: 30px;
-            background-color: #ddd;
-            color: #666;
-            border: none;
-            border-radius: 50%;
-            width: 70px;
-            height: 70px;
-            cursor: pointer;
-            position: absolute;
-            bottom: -80px;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        #image-mic-btn img {
+            width: 100%;
+            height: auto;
+            display: block;
         }
 
-        #retry-btn:hover { background-color: #ccc; transform: scale(1.1); }
-        #mic-btn.retry-ready #retry-btn { display: flex; align-items: center; justify-content: center; }
+        #image-mic-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* 💡 수정: 듣는 중 애니메이션 (초록색 원 이미지 버튼에 적용) */
+        #image-mic-btn.listening {
+            animation: blink-mic 1.2s infinite;
+        }
+
+        /* 💡 수정 3-2: 새로고침 아이콘 삭제 */
+        /* #retry-btn 관련 CSS 삭제 */
 
         #status {
             margin-top: 20px;
@@ -153,28 +157,40 @@
             50% { opacity: 0.6; transform: scale(1); }
             100% { opacity: 1; transform: scale(1.05); }
         }
+
+        @keyframes blink-mic {
+            0% { opacity: 1; transform: scale(1.05); }
+            50% { opacity: 0.7; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
+
+        /* 💡 수정 4: 반응형 디자인 미디어 쿼리 */
+        /* 태블릿(가로 모드) 및 크롬북 등 넓은 화면 */
+        @media screen and (min-width: 1024px) {
+            body { padding-top: 50px; padding-bottom: 280px; }
+            #font-controls { width: 90%; gap: 20px; }
+            .font-btn { font-size: 22px; padding: 12px 25px; }
+            #word-display { width: 90%; padding: 50px; min-height: 400px; }
+            #image-mic-btn { max-width: 180px; }
+            #status { font-size: 24px; margin-top: 25px; }
+        }
     </style>
 </head>
 <body>
-
-    <div id="top-visuals">
-        <div id="visual-speak" class="item active">👄🎤</div>
-        <div class="arrow item">➡️</div>
-        <div id="visual-hangul" class="item">ㄱㄴㄷ</div>
-    </div>
 
     <div id="font-controls">
         <button class="font-btn" id="font-down">🔍 ➖ 작게</button>
         <button class="font-btn" id="font-up">🔍 ➕ 크게</button>
     </div>
 
-    <div id="word-display"></div>
+    <div id="word-display">
+        </div>
     
     <div id="bottom-area">
         <div style="position: relative;"> 
-            <button id="mic-btn">🎤
-                <span id="retry-btn">🔄</span> 
-            </button>
+            <button id="image-mic-btn">
+                <img src="image_0.png" alt="마이크">
+                </button>
         </div>
         <div id="status">준비 완료!</div>
     </div>
@@ -187,23 +203,16 @@
         const btnDown = document.getElementById('font-down');
 
         function updateGridAndFont() {
-            // 글자 크기 적용
-            wordDisplay.style.fontSize = currentFontSize + 'px';
+            // 원고지 셀 크기를 글자 크기에 비례하여 설정 (패딩 포함)
+            const cellSize = currentFontSize + 16; 
             
-            // 폰트 크기에 비례하여 원고지(깍두기) 격자 크기 조절
-            // 줄 간격을 맞추기 위해 폰트 크기의 1.5배로 격자 크기를 설정합니다.
-            const gridSize = currentFontSize * 1.5; 
-            wordDisplay.style.lineHeight = gridSize + 'px';
-            
-            // 원고지 격자무늬(배경) 그리기
-            wordDisplay.style.backgroundImage = `
-                linear-gradient(to right, #ffcdd2 2px, transparent 2px),
-                linear-gradient(to bottom, #ffcdd2 2px, transparent 2px)
-            `;
-            wordDisplay.style.backgroundSize = `${gridSize}px ${gridSize}px`;
-            
-            // 글씨가 테두리에 너무 붙지 않게 패딩도 비례해서 조정
-            wordDisplay.style.padding = `${gridSize * 0.5}px ${gridSize * 0.8}px`;
+            // 모든 셀의 크기와 폰트 크기를 한 번에 업데이트
+            const cells = wordDisplay.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                cell.style.width = `${cellSize}px`;
+                cell.style.height = `${cellSize}px`;
+                cell.style.fontSize = `${currentFontSize}px`;
+            });
         }
 
         // 폰트 크기 키우기 버튼 클릭
@@ -222,26 +231,26 @@
             }
         });
 
-        // 페이지 시작 시 한 번 실행하여 초기 디자인 적용
+        // 페이지 시작 시 한 번 실행하여 초기 디자인 적용 (비어있어도 원고지 틀 생성)
         updateGridAndFont();
 
-        // ---------------- 기존 음성 인식(STT) 코드 ----------------
+        // ---------------- 기존 음성 인식(STT) 코드 수정 ----------------
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
         if (!SpeechRecognition) {
             wordDisplay.innerHTML = "크롬 브라우저를<br>사용해주세요!";
-            document.getElementById('mic-btn').style.display = 'none';
+            document.getElementById('image-mic-btn').style.display = 'none';
         } else {
             const recognition = new SpeechRecognition();
             recognition.lang = 'ko-KR'; 
             recognition.interimResults = true; 
             recognition.maxAlternatives = 1;
 
-            const micBtn = document.getElementById('mic-btn');
-            const retryBtn = document.getElementById('retry-btn');
+            const micBtn = document.getElementById('image-mic-btn'); // 💡 수정: 새로운 마이크 이미지 버튼 연결
             const statusDisplay = document.getElementById('status');
-            const visualSpeak = document.getElementById('visual-speak');
-            const visualHangul = document.getElementById('visual-hangul');
+            // const retryBtn = document.getElementById('retry-btn'); // 💡 수정 3-2: 삭제
+            // const visualSpeak = document.getElementById('visual-speak'); // 💡 수정 3-1: 삭제
+            // const visualHangul = document.getElementById('visual-hangul'); // 💡 수정 3-1: 삭제
 
             let isListening = false;
             let isComplete = false;
@@ -252,29 +261,29 @@
                 recognition.start();
             });
 
-            retryBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                resetApp();
-                recognition.start();
-            });
+            // retryBtn.addEventListener('click', (e) => { // 💡 수정 3-2: 삭제
+            //     e.stopPropagation();
+            //     resetApp();
+            //     recognition.start();
+            // });
 
             function resetApp() {
                 isListening = false;
                 isComplete = false;
-                micBtn.classList.remove('complete', 'retry-ready');
+                // micBtn.classList.remove('complete', 'retry-ready'); // 💡 수정: 완료 색상/다시 듣기 로직 삭제
                 wordDisplay.textContent = "...";
                 statusDisplay.textContent = "귀를 쫑긋 세우고 있어요!";
-                visualSpeak.classList.add('active');
-                visualHangul.classList.remove('active');
+                // visualSpeak.classList.add('active'); // 💡 수정 3-1: 삭제
+                // visualHangul.classList.remove('active'); // 💡 수정 3-1: 삭제
             }
 
             recognition.onstart = function() {
                 isListening = true;
-                micBtn.classList.add('listening');
+                micBtn.classList.add('listening'); // 💡 수정: 새로운 이미지 버튼에 애니메이션 적용
                 statusDisplay.textContent = "듣고 있어요!";
                 wordDisplay.textContent = "...";
-                visualSpeak.classList.add('active');
-                visualHangul.classList.remove('active');
+                // visualSpeak.classList.add('active'); // 💡 수정 3-1: 삭제
+                // visualHangul.classList.remove('active'); // 💡 수정 3-1: 삭제
             }
 
             recognition.onresult = function(event) {
@@ -289,7 +298,25 @@
                         interimTranscript += transcript;
                     }
                 }
-                wordDisplay.innerHTML = finalTranscript || interimTranscript;
+                
+                // 💡 수정 1 & 2: 글자를 쪼개서 진짜 원고지 칸 생성
+                wordDisplay.innerHTML = ''; // 기존 내용 지우기
+                const text = finalTranscript || interimTranscript;
+                const cellSize = currentFontSize + 16;
+                
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+                    const cell = document.createElement('span');
+                    cell.classList.add('cell');
+                    if (char === ' ') {
+                        cell.classList.add('space'); // 띄어쓰기 칸은 회색 배경
+                    }
+                    cell.textContent = char;
+                    cell.style.width = `${cellSize}px`;
+                    cell.style.height = `${cellSize}px`;
+                    cell.style.fontSize = `${currentFontSize}px`;
+                    wordDisplay.appendChild(cell);
+                }
                 
                 // 말이 길어질 때 최하단으로 자연스럽게 스크롤 되도록 설정
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
@@ -303,24 +330,26 @@
                 isListening = false;
                 micBtn.classList.remove('listening');
 
-                if (!wordDisplay.textContent.includes("...") && wordDisplay.textContent.trim() !== "") {
+                // 말이 성공적으로 끝났는지 확인 (비어있지 않아야 함)
+                const cells = wordDisplay.querySelectorAll('.cell');
+                if (cells.length > 0 && Array.from(cells).some(cell => cell.textContent.trim() !== "")) {
                     isComplete = true;
-                    micBtn.classList.add('complete');
+                    // micBtn.classList.add('complete'); // 💡 수정: 완료 초록색 색상 로직 삭제
                     statusDisplay.textContent = "멋진 낱말을 적었어요! 완료!";
-                    visualSpeak.classList.remove('active');
-                    visualHangul.classList.add('active');
+                    // visualSpeak.classList.remove('active'); // 💡 수정 3-1: 삭제
+                    // visualHangul.classList.add('active'); // 💡 수정 3-1: 삭제
 
-                    setTimeout(() => {
-                        if(isComplete) {
-                            micBtn.classList.add('retry-ready');
-                            statusDisplay.textContent = "버튼을 누르면 다시 할 수 있어요!";
-                        }
-                    }, 2500);
+                    // setTimeout(() => { // 💡 수정 3-2: 다시 듣기 아이콘 등장 로직 삭제
+                    //     if(isComplete) {
+                    //         micBtn.classList.add('retry-ready');
+                    //         statusDisplay.textContent = "버튼을 누르면 다시 할 수 있어요!";
+                    //     }
+                    // }, 2500);
                 } else {
-                    micBtn.classList.remove('complete');
+                    // micBtn.classList.remove('complete'); // 💡 수정: 완료 초록색 색상 로직 삭제
                     statusDisplay.textContent = "다시 말하기 버튼을 눌러주세요.";
-                    visualSpeak.classList.remove('active');
-                    visualHangul.classList.remove('active');
+                    // visualSpeak.classList.remove('active'); // 💡 수정 3-1: 삭제
+                    // visualHangul.classList.remove('active'); // 💡 수정 3-1: 삭제
                 }
             };
         }
