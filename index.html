@@ -209,7 +209,7 @@
             return text.replace(/[.,?!]/g, ''); 
         }
 
-        // 정사각형 칸을 화면에 그려주는 함수 
+        // 정사각형 칸을 화면에 그려주는 함수
         function renderCells(text) {
             wordDisplay.innerHTML = '';
             
@@ -271,7 +271,7 @@
             const recognition = new SpeechRecognition();
             recognition.lang = 'ko-KR'; 
             recognition.interimResults = true; 
-            recognition.continuous = true; 
+            // 💡 3초 기다림(연속 모드) 설정 삭제 (기본값인 false로 작동하여 말이 끊기면 바로 종료됨)
             recognition.maxAlternatives = 1;
 
             const micBtn = document.getElementById('image-mic-btn');
@@ -279,15 +279,13 @@
 
             let isListening = false;
             let isComplete = false;
-            let silenceTimer = null; 
 
-            // 💡 수정 1: 중복 버그를 막기 위해 확정된 텍스트와 마지막 조각을 기억하는 변수 추가
+            // 중복 버그를 막기 위해 확정된 텍스트와 마지막 조각을 기억하는 변수 유지
             let finalTranscript = ''; 
             let lastFinalChunk = '';  
 
             micBtn.addEventListener('click', () => {
                 if (isListening) { 
-                    clearTimeout(silenceTimer);
                     recognition.stop(); 
                     return; 
                 }
@@ -298,9 +296,8 @@
             function resetApp() {
                 isListening = false;
                 isComplete = false;
-                finalTranscript = ''; // 초기화
-                lastFinalChunk = '';  // 초기화
-                clearTimeout(silenceTimer);
+                finalTranscript = ''; 
+                lastFinalChunk = '';  
                 renderCells("...");
                 statusDisplay.textContent = "귀를 쫑긋 세우고 있어요!";
             }
@@ -312,52 +309,39 @@
                 micBtn.classList.add('listening');
                 statusDisplay.textContent = "듣고 있어요!";
                 renderCells("...");
-
-                silenceTimer = setTimeout(() => {
-                    if (isListening) recognition.stop();
-                }, 4000);
             }
 
             recognition.onresult = function(event) {
-                clearTimeout(silenceTimer);
-
                 let interimTranscript = '';
 
-                // 💡 수정 2: 브라우저가 보낸 결과들을 하나씩 꼼꼼히 검사하는 핵심 필터
+                // 중복 결과물 필터링 로직 유지
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     let chunk = event.results[i][0].transcript;
                     
                     if (event.results[i].isFinal) {
-                        // 브라우저가 방금 전과 똑같은 단어를 또 보냈다면(버그) 무시하고, 새로운 단어일 때만 추가함
                         if (chunk.trim() !== lastFinalChunk.trim()) {
                             finalTranscript += chunk;
-                            lastFinalChunk = chunk; // 추가한 단어를 기억해둠
+                            lastFinalChunk = chunk; 
                         }
                     } else {
-                        // 아직 말하고 있는 도중인 글자들
                         interimTranscript += chunk;
                     }
                 }
                 
-                // 확정된 글자 + 말하는 도중인 글자를 합쳐서 화면에 보여줌
                 let rawText = finalTranscript + interimTranscript;
                 let cleanText = removePunctuation(rawText);
                 
                 renderCells(cleanText);
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-
-                silenceTimer = setTimeout(() => {
-                    if (isListening) recognition.stop();
-                }, 3000); 
             };
 
             recognition.onerror = function(event) {
                 statusDisplay.textContent = "앗, 잘 못 들었어요. 다시 해볼까요?";
             };
 
+            // 타이머 삭제로 인해 말이 끝나면 즉시 onend가 실행됨
             recognition.onend = function() {
                 isListening = false;
-                clearTimeout(silenceTimer);
                 micBtn.classList.remove('listening');
 
                 const cells = wordDisplay.querySelectorAll('.cell');
@@ -368,8 +352,6 @@
                     statusDisplay.textContent = "완료!"; 
                     
                     let checkedText = checkAndCorrectSpelling(currentText);
-                    
-                    // 마지막으로 불필요한 공백이나 문장부호를 깔끔하게 정리 (trim 추가)
                     let finalText = removePunctuation(checkedText).trim();
                     
                     renderCells(finalText);
