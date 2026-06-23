@@ -69,28 +69,25 @@
             font-weight: bold;
         }
 
-        /* 💡 정사각형 글자 및 문장부호 공통 사각형 스타일 */
+        /* 정사각형 글자 한 칸 스타일 */
         #word-display .cell {
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 3px solid #ff9999; /* 모든 칸 분홍색 테두리로 통일 */
-            background-color: white;   /* 모든 칸 흰색 배경으로 통일 */
-            color: #333;               /* 모든 글자 및 부호 색상 통일 */
+            border: 3px solid #ff9999;
+            background-color: white;
+            color: #333;
             border-radius: 10px;
-            aspect-ratio: 1 / 1;       /* 완벽한 정사각형 유지 */
+            aspect-ratio: 1 / 1;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             box-sizing: border-box;
-            position: relative;        /* 내부 요소의 절대 위치 기준점 설정 */
         }
 
-        /* 띄어쓰기 칸 스타일 (띄어쓰기만 흐리게 유지) */
+        /* 띄어쓰기 칸 스타일 */
         #word-display .cell.space {
             background-color: #e2e8f0;
             border: 3px dashed #cbd5e1;
         }
-
-        /* 💡 기존에 문장 부호 색상을 다르게 하던 #word-display .cell.punctuation 스타일은 완전히 삭제하여 일반 글자칸과 똑같아졌습니다. */
 
         /* 하단 고정 마이크 영역 */
         #bottom-area {
@@ -183,7 +180,6 @@
         const wordDisplay = document.getElementById('word-display');
         const btnUp = document.getElementById('font-up');
         const btnDown = document.getElementById('font-down');
-        let googleSpeechRawText = ""; 
 
         // 우리 반 맞춤법 교정 사전
         const spellCheckDictionary = {
@@ -194,9 +190,11 @@
             "마춤법": "맞춤법",
             "맜있는": "맛있는",
             "꺼에요": "거예요",
-            "거에요": "거예요"
+            "거에요": "거예요",
+            "가방이": "가방이"
         };
 
+        // 맞춤법을 검사하고 교정해주는 함수
         function checkAndCorrectSpelling(text) {
             let correctedText = text;
             for (const [wrong, right] of Object.entries(spellCheckDictionary)) {
@@ -206,7 +204,12 @@
             return correctedText;
         }
 
-        // 💡 수정: 온점의 위치를 독립시키고 모든 사각형의 크기를 일치시키는 셀 빌더 함수
+        // 모든 문장 부호를 강제로 완전히 삭제하는 함수
+        function removePunctuation(text) {
+            return text.replace(/[.,?!]/g, ''); 
+        }
+
+        // 정사각형 칸을 화면에 그려주는 함수 
         function renderCells(text) {
             wordDisplay.innerHTML = '';
             
@@ -217,6 +220,8 @@
                 return;
             }
 
+            text = removePunctuation(text);
+
             const cellSize = currentFontSize + 24;
             
             for (let i = 0; i < text.length; i++) {
@@ -224,53 +229,17 @@
                 const cell = document.createElement('span');
                 cell.classList.add('cell');
                 
-                // 모든 칸의 가로/세로 크기를 무조건 똑같이 고정
                 cell.style.width = `${cellSize}px`;
                 cell.style.height = `${cellSize}px`;
                 cell.style.fontSize = `${currentFontSize}px`;
 
                 if (char === ' ') {
                     cell.classList.add('space');
-                    cell.textContent = char;
-                } 
-                // 💡 수정 1 & 2: 온점(.)일 때 크기 팽창을 막고 좌측 하단 구석으로 정렬
-                else if (char === '.') {
-                    const dotInner = document.createElement('span');
-                    dotInner.textContent = '.';
-                    dotInner.style.position = 'absolute';
-                    dotInner.style.left = '15%';   /* 왼쪽 정렬 */
-                    dotInner.style.bottom = '15%'; /* 하단 정렬 */
-                    dotInner.style.lineHeight = '0.5'; /* 글자 자체 여백 제거 */
-                    cell.appendChild(dotInner);
-                } 
-                // 일반 글자 및 ?, ! 부호는 사각형의 정중앙에 배치
-                else {
-                    cell.textContent = char;
                 }
                 
+                cell.textContent = char;
                 wordDisplay.appendChild(cell);
             }
-        }
-
-        // 문장부호 결정 함수 (인토네이션 매칭 반영)
-        function applyPunctuation(text, rawText) {
-            text = text.trim();
-            if (!text || text === "...") return text;
-            
-            let lastChar = text.slice(-1);
-            if (['.', '?', '!'].includes(lastChar)) return text;
-
-            const googleWantsQuestion = rawText.includes('?');
-            const questionKeywords = /(누가|언제|어디|무엇|뭐|어떻게|왜|몇|있어|했어|있니|했니|했나요|인가요|맞나요|가요|의|지)/;
-            const questionEndings = ['까', '니', '냐', '죠'];
-
-            if (googleWantsQuestion || text.match(questionKeywords) || questionEndings.includes(lastChar)) {
-                return text + '?';
-            }
-            if (text.match(/(우와|와|앗|아싸|야호|헉|짜잔|최고|정말|진짜)/)) {
-                return text + '!';
-            }
-            return text + '.';
         }
 
         // 크기 조절 버튼 이벤트
@@ -302,6 +271,7 @@
             const recognition = new SpeechRecognition();
             recognition.lang = 'ko-KR'; 
             recognition.interimResults = true; 
+            recognition.continuous = true; 
             recognition.maxAlternatives = 1;
 
             const micBtn = document.getElementById('image-mic-btn');
@@ -309,9 +279,18 @@
 
             let isListening = false;
             let isComplete = false;
+            let silenceTimer = null; 
+
+            // 💡 수정 1: 중복 버그를 막기 위해 확정된 텍스트와 마지막 조각을 기억하는 변수 추가
+            let finalTranscript = ''; 
+            let lastFinalChunk = '';  
 
             micBtn.addEventListener('click', () => {
-                if (isListening) { recognition.stop(); return; }
+                if (isListening) { 
+                    clearTimeout(silenceTimer);
+                    recognition.stop(); 
+                    return; 
+                }
                 if (isComplete) { resetApp(); recognition.start(); return; }
                 recognition.start();
             });
@@ -319,33 +298,57 @@
             function resetApp() {
                 isListening = false;
                 isComplete = false;
-                googleSpeechRawText = "";
+                finalTranscript = ''; // 초기화
+                lastFinalChunk = '';  // 초기화
+                clearTimeout(silenceTimer);
                 renderCells("...");
                 statusDisplay.textContent = "귀를 쫑긋 세우고 있어요!";
             }
 
             recognition.onstart = function() {
                 isListening = true;
+                finalTranscript = ''; 
+                lastFinalChunk = '';
                 micBtn.classList.add('listening');
                 statusDisplay.textContent = "듣고 있어요!";
                 renderCells("...");
+
+                silenceTimer = setTimeout(() => {
+                    if (isListening) recognition.stop();
+                }, 4000);
             }
 
             recognition.onresult = function(event) {
-                let interimTranscript = '';
-                let finalTranscript = '';
+                clearTimeout(silenceTimer);
 
+                let interimTranscript = '';
+
+                // 💡 수정 2: 브라우저가 보낸 결과들을 하나씩 꼼꼼히 검사하는 핵심 필터
                 for (let i = event.resultIndex; i < event.results.length; i++) {
+                    let chunk = event.results[i][0].transcript;
+                    
                     if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
+                        // 브라우저가 방금 전과 똑같은 단어를 또 보냈다면(버그) 무시하고, 새로운 단어일 때만 추가함
+                        if (chunk.trim() !== lastFinalChunk.trim()) {
+                            finalTranscript += chunk;
+                            lastFinalChunk = chunk; // 추가한 단어를 기억해둠
+                        }
                     } else {
-                        interimTranscript += event.results[i][0].transcript;
+                        // 아직 말하고 있는 도중인 글자들
+                        interimTranscript += chunk;
                     }
                 }
                 
-                googleSpeechRawText = finalTranscript || interimTranscript;
-                renderCells(googleSpeechRawText);
+                // 확정된 글자 + 말하는 도중인 글자를 합쳐서 화면에 보여줌
+                let rawText = finalTranscript + interimTranscript;
+                let cleanText = removePunctuation(rawText);
+                
+                renderCells(cleanText);
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+
+                silenceTimer = setTimeout(() => {
+                    if (isListening) recognition.stop();
+                }, 3000); 
             };
 
             recognition.onerror = function(event) {
@@ -354,21 +357,20 @@
 
             recognition.onend = function() {
                 isListening = false;
+                clearTimeout(silenceTimer);
                 micBtn.classList.remove('listening');
 
                 const cells = wordDisplay.querySelectorAll('.cell');
                 let currentText = Array.from(cells).map(cell => cell.textContent).join('').trim();
-
-                if (['.', '?', '!'].includes(currentText.slice(-1))) {
-                    currentText = currentText.slice(0, -1);
-                }
 
                 if (currentText && currentText !== "...") {
                     isComplete = true;
                     statusDisplay.textContent = "완료!"; 
                     
                     let checkedText = checkAndCorrectSpelling(currentText);
-                    let finalText = applyPunctuation(checkedText, googleSpeechRawText);
+                    
+                    // 마지막으로 불필요한 공백이나 문장부호를 깔끔하게 정리 (trim 추가)
+                    let finalText = removePunctuation(checkedText).trim();
                     
                     renderCells(finalText);
                 } else {
